@@ -1,7 +1,9 @@
 import { INITIAL_LECTURES } from '../data/mockData';
 
-// Backend configuration via environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8001';
+// Backend configuration: in production on Vercel, default to same-origin relative path ('') so requests route to /api
+// In local development, use VITE_API_URL or fall back to http://127.0.0.1:8001
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '' : 'http://127.0.0.1:8001');
 const FORCE_MOCK_ENV = import.meta.env.VITE_USE_MOCK === 'true';
 const STORAGE_KEY = 'hearnote_lectures_v1';
 
