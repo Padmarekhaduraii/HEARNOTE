@@ -5,7 +5,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Database configuration
-DATABASE_FILE = os.getenv("DATABASE_FILE", str(BASE_DIR / "hearnote.db"))
+# When running on Vercel, use writable temporary location (/tmp/hearnote.db) while preserving local development
+IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+DEFAULT_DB_FILE = "/tmp/hearnote.db" if IS_VERCEL else str(BASE_DIR / "hearnote.db")
+DATABASE_FILE = os.getenv("DATABASE_FILE", DEFAULT_DB_FILE)
 
 # Application configuration
 APP_TITLE = "HearNote API"

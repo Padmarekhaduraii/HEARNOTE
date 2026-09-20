@@ -1,7 +1,8 @@
 import sqlite3
 import os
+import shutil
 from contextlib import contextmanager
-from app.config import DATABASE_FILE
+from app.config import DATABASE_FILE, BASE_DIR, IS_VERCEL
 
 def get_db_connection():
     """Get a SQLite connection configured to return rows as dictionaries."""
@@ -25,7 +26,20 @@ def get_db():
 
 def init_db():
     """Initialize database tables."""
-    os.makedirs(os.path.dirname(DATABASE_FILE), exist_ok=True)
+    db_dir = os.path.dirname(DATABASE_FILE)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
+    # When on Vercel, copy the bundled seed database to /tmp if it doesn't exist yet
+    if IS_VERCEL and not os.path.exists(DATABASE_FILE):
+        seed_db = BASE_DIR / "hearnote.db"
+        if seed_db.exists():
+            try:
+                shutil.copyfile(str(seed_db), DATABASE_FILE)
+                os.chmod(DATABASE_FILE, 0o666)
+            except Exception as e:
+                print(f"Notice: Could not copy seed db to {DATABASE_FILE}: {e}")
+
     with get_db() as conn:
         cursor = conn.cursor()
         
