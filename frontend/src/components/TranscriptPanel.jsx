@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, ArrowDown, Type, Volume2 } from 'lucide-react';
+import { MessageSquare, ArrowDown, Type, Volume2, Search as SearchIcon } from 'lucide-react';
 import SearchBar from './SearchBar';
 import TranscriptSegment from './TranscriptSegment';
+import { searchLecture } from '../services/api';
 
 export default function TranscriptPanel({
+  lectureId = null,
   transcript = [],
   isLive = false,
   isPaused = false,
@@ -14,14 +16,66 @@ export default function TranscriptPanel({
   const [searchQuery, setSearchQuery] = useState('');
   const [fontSize, setFontSize] = useState('base'); // 'sm', 'base', 'lg', 'xl'
   const [autoScroll, setAutoScroll] = useState(true);
+  const [searchResults, setSearchResults] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
   const scrollContainerRef = useRef(null);
 
-  // Filter segments based on search
+  // Debounced search query to backend GET /api/lectures/{lecture_id}/search?q=
+  useEffect(() => {
+    if (!lectureId || !searchQuery.trim()) {
+      setSearchResults(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let ignore = false;
+    setIsSearching(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const data = await searchLecture(lectureId, searchQuery.trim());
+        if (!ignore) {
+          setSearchResults(data);
+        }
+      } catch (err) {
+        console.warn('Backend search error:', err);
+      } finally {
+        if (!ignore) {
+          setIsSearching(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [lectureId, searchQuery]);
+
+  // Filter segments based on search query and backend search results
   const filteredSegments = transcript.filter((seg) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return seg.text.toLowerCase().includes(q) || seg.speaker.toLowerCase().includes(q);
+    const localMatch = (seg.text && seg.text.toLowerCase().includes(q)) ||
+      (seg.speaker && seg.speaker.toLowerCase().includes(q));
+
+    if (localMatch) return true;
+
+    if (searchResults && searchResults.results) {
+      return searchResults.results.some(
+        (r) => r.type === 'transcript' &&
+          (r.text.toLowerCase().includes(seg.text.toLowerCase()) ||
+           seg.text.toLowerCase().includes(r.text.toLowerCase()))
+      );
+    }
+
+    return false;
   });
+
+  const noteMatches = searchResults?.results?.filter((r) => r.type === 'note') || [];
+  const totalMatchCount = searchQuery.trim()
+    ? (searchResults ? searchResults.total_results : filteredSegments.length)
+    : null;
 
   // Auto-scroll when new segment arrives (if auto-scroll enabled)
   useEffect(() => {
@@ -93,9 +147,17 @@ export default function TranscriptPanel({
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search transcript by keywords or speaker..."
-          matchCount={searchQuery.trim() ? filteredSegments.length : null}
+          placeholder="Search transcript & study notes by keywords or speaker..."
+          matchCount={totalMatchCount}
         />
+        {searchQuery.trim() && noteMatches.length > 0 && (
+          <div className="mt-2 px-1 flex items-center gap-2 text-[11px] text-indigo-300 animate-fadeIn">
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+            <span className="truncate">
+              Also found in {noteMatches.length} AI study note section{noteMatches.length > 1 ? 's' : ''}: {noteMatches.map((m) => m.source).join(', ')}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Live State Banner */}

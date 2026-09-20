@@ -12,12 +12,14 @@ APP_TITLE = "HearNote API"
 APP_DESCRIPTION = "Accessible Lecture Transcription & AI Note Generator Backend"
 APP_VERSION = "0.1.0"
 
-# CORS configuration - allow all for hackathon / local frontend development
+# CORS configuration - allow local frontend development origins
 CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "*"
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001",
 ]

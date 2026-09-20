@@ -1,11 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { Radio, LayoutDashboard, History, Menu, X, Plus, Headphones } from 'lucide-react';
-import { isMockMode } from '../services/api';
+import { Radio, LayoutDashboard, History, Menu, X, Plus, Headphones, Wifi, WifiOff } from 'lucide-react';
+import { healthCheck, isMockMode } from '../services/api';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [apiStatus, setApiStatus] = useState('checking'); // 'checking', 'connected', 'offline'
   const mockActive = isMockMode();
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function checkHealth() {
+      const res = await healthCheck();
+      if (!ignore) {
+        setApiStatus(res.isOnline ? 'connected' : 'offline');
+      }
+    }
+
+    checkHealth();
+    // Periodically verify connection every 30 seconds
+    const interval = setInterval(checkHealth, 30000);
+
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const navLinks = [
     { to: '/', label: 'Overview', icon: Headphones, end: true },
@@ -77,12 +98,29 @@ export default function Navbar() {
 
           {/* Right Action & Status Badge */}
           <div className="hidden sm:flex items-center gap-3">
-            {mockActive && (
+            {apiStatus === 'connected' ? (
               <span
-                className="text-[11px] font-mono px-2 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-400"
-                title="Frontend mock mode active. No backend server required for demo."
+                className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-md bg-emerald-950/60 border border-emerald-800/60 text-emerald-400"
+                title="FastAPI backend connected at http://127.0.0.1:8001"
               >
-                Offline Ready
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>API Connected</span>
+              </span>
+            ) : apiStatus === 'offline' ? (
+              <span
+                className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-md bg-amber-950/60 border border-amber-800/60 text-amber-300"
+                title="Backend unreachable at http://127.0.0.1:8001. Fallback demo data active."
+              >
+                <WifiOff className="w-3 h-3 text-amber-400" />
+                <span>Backend Offline</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-500 animate-ping"></span>
+                <span>Connecting...</span>
               </span>
             )}
 

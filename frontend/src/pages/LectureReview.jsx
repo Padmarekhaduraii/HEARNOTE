@@ -11,7 +11,14 @@ import {
 import TranscriptPanel from '../components/TranscriptPanel';
 import NotesPanel from '../components/NotesPanel';
 import LoadingState from '../components/LoadingState';
-import { getLecture, updateTranscript, updateNotes, getLectures } from '../services/api';
+import {
+  getLecture,
+  getTranscript,
+  getNotes,
+  updateTranscript,
+  updateNotes,
+  getLectures
+} from '../services/api';
 
 export default function LectureReview() {
   const { id } = useParams();
@@ -27,6 +34,7 @@ export default function LectureReview() {
     let ignore = false;
 
     async function fetchLectureData() {
+      setIsLoading(true);
       try {
         let currentId = id;
         if (!currentId) {
@@ -37,9 +45,22 @@ export default function LectureReview() {
         }
 
         if (currentId) {
-          const data = await getLecture(currentId);
-          if (!ignore) {
-            setLecture(data);
+          const [lectureMeta, transcriptData, notesData] = await Promise.all([
+            getLecture(currentId),
+            getTranscript(currentId),
+            getNotes(currentId),
+          ]);
+
+          if (!ignore && lectureMeta) {
+            const segments = Array.isArray(transcriptData)
+              ? transcriptData
+              : (transcriptData?.segments || []);
+
+            setLecture({
+              ...lectureMeta,
+              transcript: segments,
+              notes: notesData,
+            });
           }
         }
       } catch (err) {
@@ -266,6 +287,7 @@ ${(lecture.transcript || [])
       <div className="min-h-[500px]">
         {activeTab === 'transcript' ? (
           <TranscriptPanel
+            lectureId={lecture.id}
             transcript={lecture.transcript || []}
             isLive={false}
             allowEdit={true}

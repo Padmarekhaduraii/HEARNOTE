@@ -147,16 +147,16 @@ export default function LiveLecture() {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     if (simulationTimeoutRef.current) clearTimeout(simulationTimeoutRef.current);
 
-    // Prepare lecture payload
+    // Prepare lecture payload for backend POST /api/lectures
+    const lectureDuration = seconds > 0
+      ? `${Math.max(1, Math.round(seconds / 60))} mins`
+      : '45 mins';
+
     const lecturePayload = {
-      id: `lec-${Date.now()}`,
-      title: lectureTitle,
-      date: new Date().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      duration: formatTimer(seconds),
+      title: lectureTitle || 'Untitled Lecture',
+      course_name: 'Computer Science & AI',
+      description: notes.summary || 'Live classroom lecture session captured with speech-to-text.',
+      duration: lectureDuration,
       transcript: transcript,
       notes: notes
     };
@@ -165,8 +165,8 @@ export default function LiveLecture() {
       const saved = await createLecture(lecturePayload);
       setSavedLectureId(saved.id);
     } catch (err) {
-      console.error('Failed to auto-save lecture:', err);
-      setSavedLectureId(lecturePayload.id);
+      console.error('Failed to auto-save lecture to backend:', err);
+      setSavedLectureId(`lec-${Date.now()}`);
     }
 
     setModalStage('COMPLETED');

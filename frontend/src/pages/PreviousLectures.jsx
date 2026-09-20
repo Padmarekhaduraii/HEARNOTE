@@ -12,6 +12,7 @@ export default function PreviousLectures() {
   const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'recent', 'longest'
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -22,9 +23,13 @@ export default function PreviousLectures() {
         const data = await getLectures(activeFilter);
         if (!ignore) {
           setLectures(data || []);
+          setBackendOffline(Boolean(data && data._isFallback));
         }
       } catch (err) {
         console.error('Failed to load previous lectures:', err);
+        if (!ignore) {
+          setBackendOffline(true);
+        }
       } finally {
         if (!ignore) {
           setIsLoading(false);
@@ -52,10 +57,11 @@ export default function PreviousLectures() {
   const filteredLectures = lectures.filter((lec) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    const matchTitle = lec.title.toLowerCase().includes(q);
-    const matchSummary = (lec.notes?.summary || '').toLowerCase().includes(q);
+    const matchTitle = (lec.title || '').toLowerCase().includes(q);
+    const matchSummary = (lec.notes?.summary || lec.description || '').toLowerCase().includes(q);
+    const matchCourse = (lec.course_name || '').toLowerCase().includes(q);
     const matchTopics = (lec.notes?.keyTopics || []).some((t) => t.toLowerCase().includes(q));
-    return matchTitle || matchSummary || matchTopics;
+    return matchTitle || matchSummary || matchCourse || matchTopics;
   });
 
   return (
@@ -80,6 +86,18 @@ export default function PreviousLectures() {
           <span>Start New Lecture</span>
         </Link>
       </div>
+
+      {backendOffline && (
+        <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/60 text-amber-300 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+            <span>FastAPI backend is offline (http://127.0.0.1:8001). Showing cached/demo lecture archive.</span>
+          </div>
+          <span className="text-[11px] font-mono text-amber-400/80 px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/50">
+            Offline Mode
+          </span>
+        </div>
+      )}
 
       {/* Search & Filter Controls */}
       <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">

@@ -10,6 +10,7 @@ import { getLectures, deleteLecture } from '../services/api';
 export default function Dashboard() {
   const [lectures, setLectures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -19,9 +20,17 @@ export default function Dashboard() {
         const data = await getLectures('recent');
         if (!ignore) {
           setLectures(data || []);
+          if (data && data._isFallback) {
+            setBackendOffline(true);
+          } else {
+            setBackendOffline(false);
+          }
         }
       } catch (err) {
         console.error('Failed to load lectures:', err);
+        if (!ignore) {
+          setBackendOffline(true);
+        }
       } finally {
         if (!ignore) {
           setIsLoading(false);
@@ -54,13 +63,15 @@ export default function Dashboard() {
   const totalHours = (totalMinutes / 60).toFixed(1);
 
   const notesCreatedCount = lectures.filter(
-    (l) => l.notes && (l.notes.summary || l.notes.keyTopics?.length > 0)
+    (l) => (l.notes && (l.notes.summary || l.notes.keyTopics?.length > 0)) || l.description
   ).length;
 
   const totalWords = lectures.reduce((acc, l) => {
-    if (!l.transcript) return acc;
-    const wordsInLec = l.transcript.reduce((wAcc, seg) => wAcc + (seg.text ? seg.text.split(/\s+/).length : 0), 0);
-    return acc + wordsInLec;
+    if (l.transcript && l.transcript.length > 0) {
+      return acc + l.transcript.reduce((wAcc, seg) => wAcc + (seg.text ? seg.text.split(/\s+/).length : 0), 0);
+    }
+    const mins = parseInt(l.duration, 10) || 45;
+    return acc + (mins * 135);
   }, 0);
 
   return (
@@ -84,6 +95,19 @@ export default function Dashboard() {
           <span>+ Start New Lecture</span>
         </Link>
       </div>
+
+      {/* Backend Status Notice if Offline */}
+      {backendOffline && (
+        <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-800/60 text-amber-300 text-xs flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400"></span>
+            <span>FastAPI backend is offline (http://127.0.0.1:8001). Demonstrating cached/demo lectures.</span>
+          </div>
+          <span className="text-[11px] font-mono text-amber-400/80 px-2 py-0.5 rounded bg-amber-950/60 border border-amber-800/50">
+            Offline Mode
+          </span>
+        </div>
+      )}
 
       {/* 2. Statistics Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
